@@ -28,7 +28,7 @@ Plan: [`docs/superpowers/plans/2026-07-18-astra-slice-a.md`](docs/superpowers/pl
 
 Requires **Node.js ≥ 22.13** (see `.nvmrc`).
 
-1. Create a HiveMQ user for this minion (Access Management → **Publish and Subscribe**), e.g. `mxpfaastra`.
+1. Create a HiveMQ user for this minion (Access Management → **Publish and Subscribe**), e.g. `mxpfastra`.
 2. Configure `.env` from `.env.sample` (quote passwords that start with `#`).
 3. Set `ASTRA_AGENT_ID` (e.g. `astra-demo`).
 
