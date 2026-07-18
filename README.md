@@ -20,21 +20,44 @@ need a stable public IP.
 
 ## Status
 
-Greenfield. Design: [`docs/superpowers/specs/2026-07-18-astra-design.md`](docs/superpowers/specs/2026-07-18-astra-design.md).
+**Slice A (executor) implemented** — MQTT announce/approve/`cmd.exec` over HiveMQ.
+Design: [`docs/superpowers/specs/2026-07-18-astra-design.md`](docs/superpowers/specs/2026-07-18-astra-design.md).
+Plan: [`docs/superpowers/plans/2026-07-18-astra-slice-a.md`](docs/superpowers/plans/2026-07-18-astra-slice-a.md).
 
 ## Run
 
 Requires **Node.js ≥ 22.13** (see `.nvmrc`).
+
+1. Create a HiveMQ user for this minion (Access Management → **Publish and Subscribe**), e.g. `mxpfaastra`.
+2. Configure `.env` from `.env.sample` (quote passwords that start with `#`).
+3. Set `ASTRA_AGENT_ID` (e.g. `astra-demo`).
 
 ```bash
 cp .env.sample .env              # configure MQTT credentials (gitignored)
 nvm install && nvm use           # Node 22
 npm install
 
-npm start                        # run the fleet executor (foreground)
+npm start                        # announce + wait for AARIA approve + run jobs
 npm run dev                      # watch mode during development
 npm test                         # unit tests (tsx --test)
 ```
+
+### Slice A smoke (with AARIA)
+
+With AARIA running and fleet connected (`GET /fleet/health`):
+
+```bash
+# After this agent has announced:
+curl -s http://127.0.0.1:8788/fleet/agents
+curl -s -X POST http://127.0.0.1:8788/fleet/approve \
+  -H 'content-type: application/json' \
+  -d '{"agentId":"astra-demo","labels":{"env":"lab"},"caps":["health","exec"]}'
+curl -s -X POST http://127.0.0.1:8788/fleet/cmd \
+  -H 'content-type: application/json' \
+  -d '{"agentId":"astra-demo","action":"health"}'
+```
+
+If `npm start` fails with `Not authorized`, the HiveMQ username/password for this minion is wrong or missing.
 
 ## What ASTRA does
 
