@@ -7,7 +7,10 @@
   "scripts": {
     "start": "tsx src/main.ts",
     "dev": "tsx watch src/main.ts",
-    "test": "tsx --test src/__tests__/**/*.test.ts"
+    "test": "tsx --test src/__tests__/**/*.test.ts",
+    "install:host": "bash deploy/install-upgrade.sh",
+    "install:reinstall": "bash deploy/install-upgrade.sh --reinstall",
+    "install:service": "bash deploy/install-service.sh"
   },
   "dependencies": {
     "dotenv": "^16.4.5",

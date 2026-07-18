@@ -28,6 +28,21 @@ Plan: [`docs/superpowers/plans/2026-07-18-astra-slice-a.md`](docs/superpowers/pl
 
 Requires **Node.js ≥ 22.13** (see `.nvmrc`).
 
+### VPS / host install (recommended)
+
+```bash
+git clone git@github.com:sreekuttan-m-achari/MXPF-ASTRA.git
+cd MXPF-ASTRA
+bash deploy/install-upgrade.sh        # deps, Node via nvm, .env, optional systemd
+# later:
+bash deploy/install-upgrade.sh        # upgrade (pull + npm install)
+bash deploy/install-upgrade.sh -r     # reinstall deps; keeps .env
+```
+
+See [`deploy/README.md`](deploy/README.md).
+
+### Manual
+
 1. Create a HiveMQ user for this minion (Access Management → **Publish and Subscribe**), e.g. `mxpfastra`.
 2. Configure `.env` from `.env.sample` (quote passwords that start with `#`).
 3. Set `ASTRA_AGENT_ID` (e.g. `astra-demo`).
