@@ -106,7 +106,35 @@ export async function startLifecycle(
   await bus.publish(topics.pending(cfg.agentId), body, 1);
   console.error(`[lifecycle] announced ${cfg.agentId}`);
 
+  const heartbeatMs = Number(process.env.ASTRA_HEARTBEAT_MS ?? 30_000);
+  let beatTimer: ReturnType<typeof setInterval> | undefined;
+  if (Number.isFinite(heartbeatMs) && heartbeatMs > 0) {
+    const beat = async () => {
+      try {
+        const status = makeEnvelope("agent.status", cfg.agentId, {
+          state: "online",
+          hostname: hostname(),
+          approved: current.approved,
+          version: VERSION,
+        });
+        await bus.publish(
+          topics.status(cfg.agentId),
+          serializeEnvelope(status),
+          0,
+        );
+      } catch (err) {
+        console.error("[lifecycle] heartbeat failed:", err);
+      }
+    };
+    void beat();
+    beatTimer = setInterval(() => void beat(), heartbeatMs);
+    if (typeof beatTimer.unref === "function") beatTimer.unref();
+  }
+
   return {
     getAssignment: () => current,
+    stopHeartbeat: () => {
+      if (beatTimer) clearInterval(beatTimer);
+    },
   };
 }
