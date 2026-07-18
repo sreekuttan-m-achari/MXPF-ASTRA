@@ -60,6 +60,14 @@ export async function handleCmd(
       ? (env.payload.args as Record<string, unknown>)
       : {};
 
+  const cmdPreview =
+    action === "exec" && typeof args.cmd === "string"
+      ? String(args.cmd).slice(0, 120)
+      : "";
+  console.error(
+    `[jobs] recv ${action} job=${env.id}${cmdPreview ? ` cmd=${JSON.stringify(cmdPreview)}` : ""}`,
+  );
+
   try {
     const result = await deps.runCap(action, args, deps.capCtx);
     const ok = isJobOk(action, result);
@@ -69,8 +77,18 @@ export async function handleCmd(
       data: result.data,
       error: result.error,
     });
+    if (action === "exec") {
+      const data = result.data as { code?: number; stdout?: string } | undefined;
+      const out = (data?.stdout ?? "").trim().split("\n")[0] ?? "";
+      console.error(
+        `[jobs] done ${action} job=${env.id} ok=${ok} code=${data?.code ?? "?"}${out ? ` out=${JSON.stringify(out.slice(0, 100))}` : ""}`,
+      );
+    } else {
+      console.error(`[jobs] done ${action} job=${env.id} ok=${ok}`);
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    console.error(`[jobs] fail ${action} job=${env.id}: ${message}`);
     await publishResult(deps, env.id, {
       ok: false,
       action,
