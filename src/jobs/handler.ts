@@ -108,10 +108,16 @@ function isJobOk(action: string, result: CapResult): boolean {
   return true;
 }
 
-/** `host` cap covers `host` and `host.profile`. */
+/** Cap aliases: `host` → host.profile; `update` → self.update. */
 export function capAllowed(action: string, caps: string[]): boolean {
   if (caps.includes(action)) return true;
   if ((action === "host" || action === "host.profile") && caps.includes("host")) {
+    return true;
+  }
+  if (
+    (action === "update" || action === "self.update") &&
+    caps.includes("update")
+  ) {
     return true;
   }
   return false;

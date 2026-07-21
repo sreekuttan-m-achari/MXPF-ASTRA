@@ -1,6 +1,7 @@
 import { runExec } from "./exec.js";
 import { runHealth } from "./health.js";
 import { runHostProfile } from "./host.js";
+import { runSelfUpdate } from "./update.js";
 import type { CapContext, CapHandler, CapResult } from "./types.js";
 
 const handlers: Record<string, CapHandler> = {
@@ -8,6 +9,8 @@ const handlers: Record<string, CapHandler> = {
   exec: runExec,
   "host.profile": runHostProfile,
   host: runHostProfile,
+  "self.update": runSelfUpdate,
+  update: runSelfUpdate,
 };
 
 export type { CapContext, CapResult } from "./types.js";

@@ -21,7 +21,7 @@ import {
 } from "../host/profile.js";
 
 const VERSION = "0.1.0";
-const DEFAULT_CAPS = ["health", "exec", "host"];
+const DEFAULT_CAPS = ["health", "exec", "host", "update"];
 
 export async function startLifecycle(
   bus: FleetBus,
