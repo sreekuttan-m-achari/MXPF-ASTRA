@@ -1,5 +1,6 @@
 .env
 data/
+HOST.md
 node_modules/
 dist/
 *.log

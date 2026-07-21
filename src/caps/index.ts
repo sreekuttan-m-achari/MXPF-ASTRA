@@ -1,10 +1,13 @@
 import { runExec } from "./exec.js";
 import { runHealth } from "./health.js";
+import { runHostProfile } from "./host.js";
 import type { CapContext, CapHandler, CapResult } from "./types.js";
 
 const handlers: Record<string, CapHandler> = {
   health: runHealth,
   exec: runExec,
+  "host.profile": runHostProfile,
+  host: runHostProfile,
 };
 
 export type { CapContext, CapResult } from "./types.js";

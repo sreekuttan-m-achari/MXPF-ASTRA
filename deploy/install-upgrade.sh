@@ -15,6 +15,7 @@ FORCE_REINSTALL=0
 ASSUME_YES=0
 SKIP_SERVICE=0
 SKIP_PULL=0
+REFRESH_HOST=0
 
 for arg in "$@"; do
   case "$arg" in
@@ -22,6 +23,7 @@ for arg in "$@"; do
     --yes|-y) ASSUME_YES=1 ;;
     --skip-service) SKIP_SERVICE=1 ;;
     --skip-pull) SKIP_PULL=1 ;;
+    --refresh-host) REFRESH_HOST=1 ;;
     --help|-h)
       cat <<'EOF'
 ASTRA guided install / upgrade / reinstall (VPS-friendly)
@@ -32,7 +34,9 @@ ASTRA guided install / upgrade / reinstall (VPS-friendly)
   bash deploy/install-upgrade.sh --skip-service
   bash deploy/install-upgrade.sh --skip-pull
 
-Never deletes: .env  data/  SOUL.md  OBJECTIVES.md  ENV.md
+Never deletes: .env  data/  HOST.md  SOUL.md  OBJECTIVES.md  ENV.md
+
+  --refresh-host   Re-probe and rewrite HOST.md (keeps purpose/notes when possible)
 EOF
       exit 0
       ;;
@@ -42,6 +46,8 @@ EOF
       ;;
   esac
 done
+
+REFRESH_HOST="${REFRESH_HOST:-0}"
 
 # ── UI ────────────────────────────────────────────────────────────────────────
 
@@ -372,6 +378,45 @@ if [[ -f "$ROOT/scripts/mqtt-auth-probe.mjs" ]]; then
       warn "MQTT auth failed — fix credentials in .env before starting the service"
     fi
   fi
+fi
+
+# ── Step 5b: Host profile (HOST.md) ───────────────────────────────────────────
+
+step "5b) Host profile (HOST.md)"
+
+PROBE="$ROOT/deploy/probe-host.sh"
+if [[ ! -x "$PROBE" && -f "$PROBE" ]]; then
+  chmod +x "$PROBE" || true
+fi
+
+if [[ -f "$PROBE" ]]; then
+  NEED_HOST=0
+  if [[ ! -f "$ROOT/HOST.md" || "$REFRESH_HOST" -eq 1 ]]; then
+    NEED_HOST=1
+  elif prompt_yn "Refresh HOST.md host profile?" n; then
+    NEED_HOST=1
+  fi
+
+  if [[ "$NEED_HOST" -eq 1 ]]; then
+    GUESSED="$("$PROBE" --guess-only 2>/dev/null || echo "General Linux host")"
+    DEFAULT_PURPOSE="$GUESSED"
+    if [[ -f "$ROOT/HOST.md" ]]; then
+      EXISTING_PURPOSE="$(awk '/^## Purpose/{getline; gsub(/^[[:space:]]+|[[:space:]]+$/,""); if(NF){print; exit}}' "$ROOT/HOST.md" 2>/dev/null || true)"
+      [[ -n "$EXISTING_PURPOSE" ]] && DEFAULT_PURPOSE="$EXISTING_PURPOSE"
+    fi
+    PURPOSE="$(prompt_value "Host purpose (auto-guess: $GUESSED)" "$DEFAULT_PURPOSE")"
+    NOTES="$(prompt_value "Host notes (optional)" "")"
+    if [[ -n "$NOTES" ]]; then
+      bash "$PROBE" --purpose "$PURPOSE" --notes "$NOTES" >/dev/null
+    else
+      bash "$PROBE" --purpose "$PURPOSE" >/dev/null
+    fi
+    ok "Wrote HOST.md (purpose: $PURPOSE)"
+  else
+    ok "HOST.md kept"
+  fi
+else
+  warn "deploy/probe-host.sh missing — skipping HOST.md"
 fi
 
 # ── Step 6: systemd (Linux) ───────────────────────────────────────────────────

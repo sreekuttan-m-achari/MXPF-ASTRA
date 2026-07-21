@@ -46,7 +46,7 @@ export async function handleCmd(
   }
 
   const allowed = deps.assignment.caps;
-  if (allowed.length > 0 && !allowed.includes(action)) {
+  if (allowed.length > 0 && !capAllowed(action, allowed)) {
     await publishResult(deps, env.id, {
       ok: false,
       action,
@@ -106,6 +106,15 @@ function isJobOk(action: string, result: CapResult): boolean {
     }
   }
   return true;
+}
+
+/** `host` cap covers `host` and `host.profile`. */
+export function capAllowed(action: string, caps: string[]): boolean {
+  if (caps.includes(action)) return true;
+  if ((action === "host" || action === "host.profile") && caps.includes("host")) {
+    return true;
+  }
+  return false;
 }
 
 async function publishResult(

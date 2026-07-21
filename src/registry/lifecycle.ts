@@ -14,16 +14,25 @@ import {
 } from "../state.js";
 import type { FleetBus } from "../mqtt/bus.js";
 import { handleCmd } from "../jobs/handler.js";
+import {
+  buildHostAnnounce,
+  ensureMinimalHostMd,
+  hostMdExists,
+} from "../host/profile.js";
 
 const VERSION = "0.1.0";
-const DEFAULT_CAPS = ["health", "exec"];
+const DEFAULT_CAPS = ["health", "exec", "host"];
 
 export async function startLifecycle(
   bus: FleetBus,
   cfg: AstraConfig,
   assignment: Assignment,
-): Promise<{ getAssignment: () => Assignment }> {
-  let current = { ...assignment, labels: { ...assignment.labels }, caps: [...assignment.caps] };
+): Promise<{ getAssignment: () => Assignment; stopHeartbeat: () => void }> {
+  let current = {
+    ...assignment,
+    labels: { ...assignment.labels },
+    caps: [...assignment.caps],
+  };
   const capCtx: CapContext = {
     sandboxRoot: cfg.sandboxRoot,
     execTimeoutMs: cfg.execTimeoutMs,
@@ -70,9 +79,12 @@ export async function startLifecycle(
         env.payload.labels && typeof env.payload.labels === "object"
           ? (env.payload.labels as Record<string, string>)
           : {};
-      const caps = Array.isArray(env.payload.caps)
+      let caps = Array.isArray(env.payload.caps)
         ? (env.payload.caps as string[])
         : DEFAULT_CAPS;
+      if (!caps.includes("host") && (await hostMdExists(cfg.sandboxRoot))) {
+        caps = [...caps, "host"];
+      }
       current = {
         approved: true,
         labels,
@@ -90,21 +102,47 @@ export async function startLifecycle(
     await subscribeCmd();
   }
 
+  await ensureMinimalHostMd(cfg.sandboxRoot);
+  const host = await buildHostAnnounce(cfg.sandboxRoot);
+  const labels = { ...current.labels };
+  if (host?.purpose && !labels.purpose) {
+    labels.purpose = host.purpose
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 48);
+  }
+
+  let caps =
+    current.caps.length > 0 ? [...current.caps] : [...DEFAULT_CAPS];
+  if (host && !caps.includes("host")) {
+    caps = [...caps, "host"];
+  }
+
   const announcePayload: Record<string, unknown> = {
     name: cfg.agentName ?? cfg.agentId,
-    labels: current.labels,
-    caps: current.caps.length > 0 ? current.caps : DEFAULT_CAPS,
+    labels,
+    caps,
     hostname: hostname(),
     version: VERSION,
   };
+  if (host) {
+    announcePayload.host = host;
+  }
   const token = process.env.ASTRA_REGISTRATION_TOKEN?.trim();
   if (token) announcePayload.registrationToken = token;
 
-  const announce = makeEnvelope("registry.announce", cfg.agentId, announcePayload);
+  const announce = makeEnvelope(
+    "registry.announce",
+    cfg.agentId,
+    announcePayload,
+  );
   const body = serializeEnvelope(announce);
   await bus.publish(topics.announce, body, 1);
   await bus.publish(topics.pending(cfg.agentId), body, 1);
-  console.error(`[lifecycle] announced ${cfg.agentId}`);
+  console.error(
+    `[lifecycle] announced ${cfg.agentId}${host ? ` host=${host.purpose}` : ""}`,
+  );
 
   const heartbeatMs = Number(process.env.ASTRA_HEARTBEAT_MS ?? 30_000);
   let beatTimer: ReturnType<typeof setInterval> | undefined;
